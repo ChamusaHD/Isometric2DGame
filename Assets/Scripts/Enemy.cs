@@ -10,17 +10,22 @@ public class Enemy : MonoBehaviour
         Idle,
         Patrol,
         Chase,
-        Attack
+        Attack,
+        Dead
     }
 
     [SerializeField] private Rigidbody2D rb;
     [SerializeField] private Animator animator;
     [SerializeField] private Transform target;
 
+    [SerializeField] private Collider2D attackArea;
+
     [SerializeField] private float radius = 40.0f;
     [SerializeField] private float speed = 5.0f;
+    [SerializeField] private float maxHp = 3f;
+    private float currentHp;
 
-    private float attackRannge = 0.5f;
+    [SerializeField] private float attackRange = 0.2f;
 
     private Vector2 moveDirection;
 
@@ -34,6 +39,7 @@ public class Enemy : MonoBehaviour
     void Start()
     {
         state = State.Patrol;
+        currentHp = maxHp;
         target = GameObject.FindGameObjectWithTag("Player").GetComponent<Transform>();
 
         //PickNewRandomDestination();
@@ -42,34 +48,35 @@ public class Enemy : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (target)
+
+        switch (state)
         {
-            switch (state)
-            {
-                default:
-                case State.Idle:
+            default:
+            case State.Idle:
 
-                    StartCoroutine(StartPatrolCountdown());
-                    break;
+                StartCoroutine(StartPatrolCountdown());
+                break;
 
-                case State.Patrol:
+            case State.Patrol:
+                PatrolMovement();
+                FindTarget();
+                break;
 
-                    PatrolMovement();
-                    break;
+            case State.Chase:
+                Chase();
+                FindTarget();
+                break;
 
-                case State.Chase:
-                    Chase();
-                    
-                    break;
+            case State.Attack:
+                Attack();
+                FindTarget();
+                break;
 
-                case State.Attack:
-                    Attack();
-                    break;
-            }
-            FindTarget();
-            print(state);
+            case State.Dead:
+                Death();
+                break;
         }
-
+        print("Enemy current State: " + state);
     }
     private void PatrolMovement()
     {
@@ -80,13 +87,13 @@ public class Enemy : MonoBehaviour
         // Check if the enemy is close enough to the destination
         if (Vector2.Distance(transform.position, destination) < 0.1f)
         {
-            print("Destination reached!!!!");
+           // print("Destination reached!!!!");
             PickNewRandomDestination();
             if (!destinationReached)
             {
                 destinationReached = true;
                 // Reached destination, pick a new random destination
-                print("Destination reached");
+               // print("Destination reached");
             }
            
         }
@@ -123,13 +130,13 @@ public class Enemy : MonoBehaviour
 
     private void FindTarget()
     {
-        if (target)
+        if (target != null)
         {
             if (Vector2.Distance(transform.position, target.transform.position) < radius)
             {
                 state = State.Chase;
 
-                if (Vector2.Distance(transform.position, target.transform.position) < attackRannge)
+                if (Vector2.Distance(transform.position, target.transform.position) < attackRange)
                 {
                     state = State.Attack;
                 }
@@ -142,21 +149,61 @@ public class Enemy : MonoBehaviour
             {
                 state = State.Patrol;
                 PickNewRandomDestination();
-            }  
+            }
+        }
+        else
+        {
+            state = State.Patrol;
+            PickNewRandomDestination();
         }
     }
 
     private void Chase()
     {
-        rb.velocity = (target.position - transform.position).normalized * speed;
-        animator.SetBool("Chase", true);
-        animator.SetBool("Patrol", false);
+        if (target != null)
+        {
+            rb.velocity = (target.position - transform.position).normalized * speed;
+            animator.SetBool("Chase", true);
+            animator.SetBool("Patrol", false);
+        }
+        else
+        {
+            state = State.Patrol;
+            PickNewRandomDestination();
+        }
+        
     }
     private void Attack()
     {
-        Debug.Log("Attacking");
+       // Debug.Log("Attacking");
         rb.velocity = Vector2.zero;
+        attackArea.GetComponent<AttackArea>().MeleeAttack();
         animator.SetTrigger("Attack");
+    }
+
+    public void TakeDamage(int _damage)
+    {
+        currentHp -= _damage;
+        
+        if (currentHp > 0) // is alive
+        {
+            animator.SetTrigger("Stun");
+            rb.velocity = Vector2.zero;
+            
+        }
+        else if(currentHp <= 0)
+        {
+            state = State.Dead;               
+        }
+
+        Debug.Log(gameObject.name + "Current hp: " + currentHp);
+    }
+    private void Death()
+    {
+        currentHp = 0;
+        rb.velocity = Vector2.zero;
+        animator.SetBool("Dead", true);
+        Destroy(gameObject, 2f);
     }
     private IEnumerator StartPatrolCountdown()
     {
