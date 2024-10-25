@@ -37,17 +37,25 @@ public class PlayerController : MonoBehaviour
 
     [SerializeField] private float maxHealth = 5;
     private float currentHealth;
+    [SerializeField] private FloatingHealthBar healthBar;
+
+
     private bool isRangeAttacking;
     [SerializeField] private Transform shootPoint;
+
+    [SerializeField] private ParticleSystem particleSystemPrefab;
 
     // Start is called before the first frame update
     void Awake()
     {
-        currentHealth = maxHealth;
+        rb = GetComponent<Rigidbody2D>();
+        healthBar = GetComponentInChildren<FloatingHealthBar>();
         playerControls = new PlayerInputActions();
     }
     private void Start()
     {
+        currentHealth = maxHealth;
+        healthBar.UpdateHealthBar(currentHealth, maxHealth);
         isAttacking = false;
         attackArea.enabled = isAttacking;
     }
@@ -78,16 +86,15 @@ public class PlayerController : MonoBehaviour
             if (meleeAttack.triggered)
             {
                 isAttacking = true;
-                //attackArea.enabled = isAttacking;
+                rb.velocity = Vector2.zero;
                 attackArea.GetComponent<AttackArea>().MeleeAttack();
                 animator.Play(attackDirenctions[lastDirection]);
             }
             if (rangedAttack.triggered)
             {
-                //TakeDamage(1);
                 isRangeAttacking = true;
                 animator.Play(bowDirenctions[lastDirection]);
-                Instantiate(arrow, shootPoint.position, Quaternion.identity);
+                //Instantiate(arrow, shootPoint.position, Quaternion.identity);
             }
         }
         else
@@ -98,12 +105,10 @@ public class PlayerController : MonoBehaviour
     }
     private void FixedUpdate()
     {
-        if (!isAttacking || !isRangeAttacking)
+        if (!isAttacking && !isRangeAttacking)
         {
             Vector2 currentPos = rb.position;
-            //inputVector = move.ReadValue<Vector2>();
-            //inputVector = Vector2.ClampMagnitude(inputVector, 1f); // make sure that diagonal movement doesn't move faster
-            Vector2 movement = inputVector * moveSpeed; //rb.velocity = moveDirection * moveSpeed;
+            Vector2 movement = inputVector * moveSpeed;
             Vector2 newPos = currentPos + movement * Time.fixedDeltaTime;
             SetDirection(movement);
 
@@ -177,12 +182,8 @@ public class PlayerController : MonoBehaviour
                             lastDirection = DirectionToIndex(direction, 4);
                         }
                     }
-                }
-
-                
-            }
-
-            
+                }              
+            }   
         }
         else
         {
@@ -241,29 +242,46 @@ public class PlayerController : MonoBehaviour
     {
         isDamaged = false;
     }
-
-    public void TakeDamage(float _damage)
+    public bool GetIsDead()
     {
-        currentHealth -= _damage;
+        return isDead;
+    }
+
+    public void SpawnArrow()
+    {
+        Instantiate(arrow, shootPoint.position, Quaternion.identity);
+    }
+
+    [Tooltip("0 = Static, 1 = Dynamic")]
+    public void SetRBType(int _rbType)
+    {
+        if(_rbType == 0)
+            rb.bodyType = RigidbodyType2D.Static;
+        else if(_rbType == 1)
+            rb.bodyType = RigidbodyType2D.Dynamic;
+    }
+
+    public void TakeDamage(float damageAmount)
+    {
+        currentHealth -= damageAmount;
+        healthBar.UpdateHealthBar(currentHealth, maxHealth);
         rb.bodyType = RigidbodyType2D.Static;
+        ParticleSystem ps = Instantiate(particleSystemPrefab, transform.position, Quaternion.identity, transform);
+        ps.Play();
 
         if (currentHealth > 0) // is alive
         {
-            currentHealth -= _damage;
+            currentHealth -= damageAmount;
             isDamaged = true;
             
-            //animator.Play(hitDirenctions[lastDirection]);
             Debug.Log(gameObject.name + "Current hp: " + currentHealth);
         }
         else
         {
-            currentHealth = 0;
-            //rb.velocity = Vector2.zero;
-            //deadPosition = transform.position;
+            currentHealth = 0;;
+            GetComponent<Collider2D>().enabled = false;
             isDead = true;
-            //animator.Play(deadDirenctions[lastDirection]);
-           // Destroy(gameObject, 1.5f);
-            //state = State.Dead;
+
         }
     }
 }

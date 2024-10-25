@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class Projectile : MonoBehaviour
 {
-    private float speed = 5.0f;
+    [SerializeField] private float speed = 5.0f;
     [SerializeField] float arrowDamage = 1f;
     [SerializeField] private Transform shootPoint;
     [SerializeField] private Rigidbody2D rb;
@@ -30,7 +30,7 @@ public class Projectile : MonoBehaviour
             collision.gameObject.GetComponent<Enemy>().TakeDamage(arrowDamage);
         }
 
-       //Destroy(gameObject);
+       Destroy(gameObject);
     }
 
 }

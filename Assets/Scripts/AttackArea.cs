@@ -19,6 +19,7 @@ public class AttackArea : MonoBehaviour
     {
         boxCollider.enabled = true;
         hitColliders = Physics2D.OverlapBoxAll(transform.position, boxCollider.size, 0f, layer);
+        print(hitColliders.Length);
 
         if (hitColliders != null)
         {
