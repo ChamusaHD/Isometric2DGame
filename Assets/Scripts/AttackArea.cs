@@ -4,22 +4,16 @@ using UnityEngine;
 
 public class AttackArea : MonoBehaviour
 {
-    [SerializeField] private int damage = 1;
+    [SerializeField] private float damage = 1;
     [SerializeField] private BoxCollider2D boxCollider;
     [SerializeField] private LayerMask layer;
     private Collider2D[] hitColliders;
 
-    //private void OnCollisionEnter2D(Collision2D collision)
-    //{
-    //    if (collision.gameObject.tag == "Enemy")
-    //    {
-    //        collision.gameObject.GetComponent<Enemy>().TakeDamage(damage);
-    //    }
-    //    else if (collision.gameObject.tag == "Player")
-    //    {
-    //        collision.gameObject.GetComponent<PlayerController>().TakeDamage(damage);
-    //    }
-    //}
+    private void Start()
+    {
+        boxCollider = GetComponent<BoxCollider2D>();
+        boxCollider.enabled = false;
+    }
 
     public void MeleeAttack()
     {

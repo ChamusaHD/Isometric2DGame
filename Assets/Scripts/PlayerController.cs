@@ -10,6 +10,7 @@ public class PlayerController : MonoBehaviour
     static readonly string[] staticDirenctions = { "Stay_U", "Stay_L", "Stay_D", "Stay_R" };
     static readonly string[] moveDirenctions = { "Walk_U", "Walk_L", "Walk_D", "Walk_R" };
     static readonly string[] attackDirenctions = { "Slash_U", "Slash_L", "Slash_D", "Slash_R" };
+    static readonly string[] bowDirenctions = { "Bow_U", "Bow_L", "Bow_D", "Bow_R" };
     static readonly string[] hitDirenctions = { "Damage_U", "Damage_L", "Damage_D", "Damage_R" };
     static readonly string[] deadDirenctions = { "Dead_U", "Dead_L", "Dead_D", "Dead_R" };
 
@@ -17,6 +18,8 @@ public class PlayerController : MonoBehaviour
     private InputAction move;
     private InputAction meleeAttack;
     private InputAction rangedAttack;
+
+    [SerializeField] private GameObject arrow;
 
     private Vector2 inputVector = Vector2.zero;
     private int lastDirection;
@@ -28,17 +31,25 @@ public class PlayerController : MonoBehaviour
 
     [SerializeField] private Collider2D attackArea;
     [SerializeField] private bool isAttacking;
+    private Vector3 deadPosition;
     [SerializeField] private bool isDead = false;
     [SerializeField] private bool isDamaged;
 
     [SerializeField] private float maxHealth = 5;
     private float currentHealth;
+    private bool isRangeAttacking;
+    [SerializeField] private Transform shootPoint;
 
     // Start is called before the first frame update
     void Awake()
     {
         currentHealth = maxHealth;
         playerControls = new PlayerInputActions();
+    }
+    private void Start()
+    {
+        isAttacking = false;
+        attackArea.enabled = isAttacking;
     }
     private void OnEnable()
     {
@@ -73,18 +84,21 @@ public class PlayerController : MonoBehaviour
             }
             if (rangedAttack.triggered)
             {
-                TakeDamage(1);
+                //TakeDamage(1);
+                isRangeAttacking = true;
+                animator.Play(bowDirenctions[lastDirection]);
+                Instantiate(arrow, shootPoint.position, Quaternion.identity);
             }
         }
         else
         {
-            rb.MovePosition(transform.position);
+            rb.bodyType = RigidbodyType2D.Static;
         }
        
     }
     private void FixedUpdate()
     {
-        if (!isAttacking)
+        if (!isAttacking || !isRangeAttacking)
         {
             Vector2 currentPos = rb.position;
             //inputVector = move.ReadValue<Vector2>();
@@ -92,7 +106,13 @@ public class PlayerController : MonoBehaviour
             Vector2 movement = inputVector * moveSpeed; //rb.velocity = moveDirection * moveSpeed;
             Vector2 newPos = currentPos + movement * Time.fixedDeltaTime;
             SetDirection(movement);
-            rb.MovePosition(newPos);
+
+            if (!isDead && !isDamaged)
+            {
+                rb.MovePosition(newPos);
+                rb.bodyType = RigidbodyType2D.Dynamic;
+            }
+            
         }
         
     }
@@ -122,6 +142,14 @@ public class PlayerController : MonoBehaviour
                         directionArray = hitDirenctions;
                         lastDirection = DirectionToIndex(direction, 4);
                     }
+                    else
+                    {
+                        if (isRangeAttacking)
+                        {
+                            directionArray = bowDirenctions;
+                            lastDirection = DirectionToIndex(direction, 4);
+                        }
+                    }
                 }
             }
             else
@@ -140,6 +168,14 @@ public class PlayerController : MonoBehaviour
                     {
                         directionArray = hitDirenctions;
                         lastDirection = DirectionToIndex(direction, 4);
+                    }
+                    else
+                    {
+                        if (isRangeAttacking)
+                        {
+                            directionArray = bowDirenctions;
+                            lastDirection = DirectionToIndex(direction, 4);
+                        }
                     }
                 }
 
@@ -192,31 +228,38 @@ public class PlayerController : MonoBehaviour
         return Mathf.FloorToInt(stepcount);
     }
 
-    public void setIsAttackingToFalse()
+    public void SetIsAttackingToFalse()
     {
         isAttacking = false;
         attackArea.enabled = isAttacking;
+    }
+    public void SetIsRangeAttackingToFalse()
+    {
+        isRangeAttacking = false;
     }
     public void SetIsDamagedToFalse()
     {
         isDamaged = false;
     }
 
-    public void TakeDamage(int _damage)
+    public void TakeDamage(float _damage)
     {
         currentHealth -= _damage;
+        rb.bodyType = RigidbodyType2D.Static;
 
         if (currentHealth > 0) // is alive
         {
             currentHealth -= _damage;
             isDamaged = true;
+            
             //animator.Play(hitDirenctions[lastDirection]);
             Debug.Log(gameObject.name + "Current hp: " + currentHealth);
         }
         else
         {
             currentHealth = 0;
-            rb.velocity = Vector2.zero;
+            //rb.velocity = Vector2.zero;
+            //deadPosition = transform.position;
             isDead = true;
             //animator.Play(deadDirenctions[lastDirection]);
            // Destroy(gameObject, 1.5f);
